@@ -1,0 +1,89 @@
+#Made by ozboza
+#Better Punishes v1.0
+
+command /ban <player> <timespan> <text>:
+	permission: betterpunishes.ban
+	aliases: betterban
+	trigger:
+		ban and kick argument 1 due to argument 3 for argument 2
+		broadcast "&#7500FFB&#7306FAe&#710CF6t&#6F12F1t&#6D18EDe&#6B1DE8r&#6923E4P&#6729DFu&#652FDBn&#6235D6i&#603BD1s&#5E41CDh&#5C47C8e&#5A4CC4s &#5658BB> %arg-1% has been banned by %player% for %arg-2%. Reason: %arg-3%"
+		add arg-1 to {bans::*}
+		add arg-3 to {ban.reasons::*}
+
+#Actual command
+
+command /banmenu <text> <text>:
+	permission: betterpunishes.banmenu
+	trigger:
+		if argument 1 is "open":
+			set {page::%player%} to argument 2 parsed as number
+			banMenu(player, {page::%player%})
+		else if argument 1 is "search":
+			set {page::%player%} to 1
+			set {search.player::%player%} to argument 2 parsed as offline player
+			banSearch(player, {page::%player%}, {search.player::%player%})
+			
+on tab complete of "banmenu":
+	set tab completions for position 1 to "open" and "search"
+	if tab arg-1 = "open":
+		set tab completions for position 2 to numbers from 1 to ceil((size of {bans::%player%})/36) + 1
+			
+
+#Turning pages. Stopping people grabbing the heads. Closing the menu etc			
+
+	
+on inventory click:
+	if event-inventory is metadata tag "banmenu" of player:
+		cancel event
+		if index of event-slot is 36:
+			if {page::%player%} is more than 1:
+				remove 1 from {page::%player%}
+				banMenu(player, {page::%player%})
+		else if index of event-slot is 44:
+			add 1 to {page::%player%}
+			banMenu(player, {page::%player%})
+		else if index of event-slot is 40:
+			close player's inventory
+	else if event-inventory is metadata tag "bansearchmenu" of player:
+		cancel event
+		if index of event-slot is 36:
+			if {page::%player%} is more than 1:
+				remove 1 from {page::%player%}
+				banSearch(player, {page::%player%}, {search.player::%player%})
+		else if index of event-slot is 44:
+			add 1 to {page::%player%}
+			banSearch(player, {page::%player%}, {search.player::%player%})
+		else if index of event-slot is 40:
+			close player's inventory
+	
+#Ban Menu
+	
+function banMenu(p: player, i: number):
+	set metadata tag "banmenu" of {_p} to chest inventory with 5 rows named "&cBan List, Page: %{_i}%"
+	set slot 36 of metadata tag "banmenu" of {_p} to paper named "&7Previous Page"
+	set slot 44 of metadata tag "banmenu" of {_p} to paper named "&7Next Page"
+	set slot 40 of metadata tag "banmenu" of {_p} to barrier named "&cClose"
+	set {_split} to (({_i} - 1) * 36)
+	loop 36 times:
+		set {_num} to (loop-number + {_split})
+		if {bans::%{_num}%} is set:
+			set slot (loop-number - 1) of metadata tag "banmenu" of {_p} to skull of {bans::%{_num}%} named "&cPlayer: %{bans::%{_num}%}%" with lore "&6Reason: %{ban.reasons::%{_num}%}%"
+	open metadata tag "banmenu" of {_p} to {_p}
+	
+#Ban Searching Menu
+	
+function banSearch(p: player, i: number, t: offline player):
+	set metadata tag "bansearchmenu" of {_p} to chest inventory with 5 rows named "&cBan List, Page: %{_i}%"
+	set slot 36 of metadata tag "bansearchmenu" of {_p} to paper named "&7Previous Page"
+	set slot 44 of metadata tag "bansearchmenu" of {_p} to paper named "&7Next Page"
+	set slot 40 of metadata tag "bansearchmenu" of {_p} to barrier named "&cClose"
+	set {_split} to (({_i} - 1) * 36)
+	loop {bans::*}:
+		if {bans::%loop-index%} is {_t}:
+			add {_t} to {_search::*}
+			add {ban.reasons::%loop-index%} to {_search.ban.reasons::*}
+	loop 36 times:
+		set {_num} to (loop-number + {_split})
+		if {_search::%{_num}%} is set:
+			set slot (loop-number - 1) of metadata tag "bansearchmenu" of {_p} to skull of {_search::%{_num}%} named "&cPlayer: %{_search::%{_num}%}%" with lore "&6Reason: %{_search.ban.reasons::%{_num}%}%"
+	open metadata tag "bansearchmenu" of {_p} to {_p}
